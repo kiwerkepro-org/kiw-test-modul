@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Initialize module scaffold
+      - name: Initialize module scaffold (Flat Hierarchy)
         shell: bash
         run: |
           set -euo pipefail
@@ -20,61 +20,65 @@ jobs:
           SLUG="${GITHUB_REPOSITORY##*/}"
           echo "Repo slug: ${SLUG}"
 
-          # 1) plugin/ -> <slug>/
-          if [ -d "plugin" ] && [ ! -d "${SLUG}" ]; then
-            mv "plugin" "${SLUG}"
+          # 1) Main PHP File: <slug>.php in ROOT
+          # If we have a single folder "plugin", move its contents to root
+          if [ -d "plugin" ]; then
+            mv plugin/* .
+            rmdir plugin
           fi
 
-          # 2) Ensure main plugin file is <slug>/<slug>.php
-          # Prefer existing <slug>.php, otherwise try to rename a single php file in the plugin root.
-          if [ ! -f "${SLUG}/${SLUG}.php" ]; then
-            # Try common patterns first
-            if [ -f "${SLUG}/plugin.php" ]; then
-              mv "${SLUG}/plugin.php" "${SLUG}/${SLUG}.php"
-            elif [ -f "${SLUG}/index.php" ]; then
-              mv "${SLUG}/index.php" "${SLUG}/${SLUG}.php"
+          # Rename generic generic.php/plugin.php/index.php to <slug>.php
+          if [ ! -f "${SLUG}.php" ]; then
+            if [ -f "plugin.php" ]; then
+              mv "plugin.php" "${SLUG}.php"
+            elif [ -f "index.php" ]; then
+              mv "index.php" "${SLUG}.php"
+            elif [ -f "kiw-module-template.php" ]; then
+               mv "kiw-module-template.php" "${SLUG}.php"
             else
-              # If exactly one *.php exists in <slug>/ root, rename it to <slug>.php
-              mapfile -t PHP_FILES < <(find "${SLUG}" -maxdepth 1 -type f -name "*.php" | sort || true)
+              # If exact one *.php in root, take it
+              mapfile -t PHP_FILES < <(find . -maxdepth 1 -type f -name "*.php" | sort || true)
               if [ "${#PHP_FILES[@]}" -eq 1 ]; then
-                mv "${PHP_FILES[0]}" "${SLUG}/${SLUG}.php"
+                mv "${PHP_FILES[0]}" "${SLUG}.php"
               else
-                echo "ERROR: Cannot determine main plugin PHP file."
-                echo "Expected: ${SLUG}/${SLUG}.php"
-                echo "Found in ${SLUG}/ (root):"
-                ls -la "${SLUG}" || true
-                exit 1
+                echo "WARNING: Could not auto-rename main PHP file to ${SLUG}.php"
+                echo "Please ensure main file is named: ${SLUG}.php manually."
+                ls -la
               fi
             fi
           fi
 
-          test -f "${SLUG}/${SLUG}.php"
+          # 2) Update Plugin Header
+          if [ -f "${SLUG}.php" ]; then
+              sed -i "s/^Plugin Name: .*$/Plugin Name: ${SLUG}/" "${SLUG}.php" || true
+              sed -i "s/^Description: .*$/Description: KIW private module (${SLUG})./" "${SLUG}.php" || true
+          fi
 
-          # 3) WordPress header neutral/slug-based (best-effort)
-          # We only replace lines if they exist.
-          sed -i "s/^Plugin Name: .*$/Plugin Name: ${SLUG}/" "${SLUG}/${SLUG}.php" || true
-          sed -i "s/^Description: .*$/Description: KIW private module (${SLUG})./" "${SLUG}/${SLUG}.php" || true
-
-          # 4) Write kiw/module.json (used by kiw-suite auto-discovery)
-          # IMPORTANT: No hardcoded artifact filename here; suite discovery uses the latest release asset.
-          mkdir -p kiw
-          cat > kiw/module.json <<JSON
+          # 3) Write module.json in ROOT
+          cat > module.json <<JSON
           {
-            "schema_version": 1,
-            "slug": "${SLUG}",
+            "schema": 1,
             "name": "${SLUG}",
+            "slug": "${SLUG}",
+            "version": "0.1.0",
+            "type": "module",
+            "entry": "${SLUG}.php",
             "description": "KIW private module (${SLUG}).",
-            "plugin_file": "${SLUG}/${SLUG}.php",
-            "source": "private",
-            "autoupdate": false,
-            "requirements": {
-              "wp_min": "6.1",
-              "php_min": "8.0"
-            }
+            "author": "KIW",
+            "license": "GPLv2 or later",
+            "text_domain": "${SLUG}",
+            "namespace": "KIW\\\\${SLUG//-/_}",
+            "requires": {
+                "php": ">=8.3",
+                "wp": ">=6.0"
+            },
+            "categories": [ "admin" ],
+            "visibility": "public"
           }
-JSON
+          JSON
 
-          # 5) Commit & push changes (only if changed)
+      - name: Commit & Push
+        run: |
           git config user.name  "kiw-bot"
           git config user.email "kiw-bot@users.noreply.github.com"
 
@@ -84,5 +88,5 @@ JSON
             exit 0
           fi
 
-          git commit -m "chore: init module scaffold (generic)"
+          git commit -m "chore: init module scaffold (flat hierarchy)"
           git push origin HEAD:main

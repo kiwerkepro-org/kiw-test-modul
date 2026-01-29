@@ -21,36 +21,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build WordPress ZIP (single root folder)
+      - name: Build WordPress ZIP (Flat Hierarchy)
         shell: bash
         run: |
           set -euo pipefail
 
           SLUG="${GITHUB_REPOSITORY##*/}"
-          TAG="${GITHUB_REF_NAME}"          # z.B. v0.1.2
-          VERSION="${TAG#v}"                # z.B. 0.1.2 (nur für Logs)
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
 
           echo "SLUG=${SLUG}"
           echo "TAG=${TAG}"
-          echo "VERSION=${VERSION}"
 
-          # Erwartete Struktur nach Init-Workflow:
-          test -f "${SLUG}/${SLUG}.php"
-
-          mkdir -p releases
-
-          # Asset-Name: <slug>-vX.Y.Z.zip
-          ZIP="releases/${SLUG}-${TAG}.zip"
-
-          # ZIP enthält GENAU 1 Root-Folder: <slug>/
-          zip -r -q "${ZIP}" "${SLUG}"
-
-          # Hard-fail: doppelte Verschachtelung
-          if unzip -l "${ZIP}" | grep -q "${SLUG}/${SLUG}/"; then
-            echo "ERROR: ZIP has double-nested folder ${SLUG}/${SLUG}/"
-            unzip -l "${ZIP}" | head -n 120
+          # 1. Check for module.json in ROOT
+          if [ ! -f "module.json" ]; then
+            echo "ERROR: module.json not found in root!"
+            ls -la
             exit 1
           fi
+
+          # 2. Prepare Build Directory
+          BUILD_DIR="build_tmp/${SLUG}"
+          mkdir -p "${BUILD_DIR}"
+
+          # 3. Copy files to slug-folder (excluding .git, .github, releases, etc.)
+          # Using rsync if available, or simple cp with exclusions logic is tricky in strict bash without array.
+          # Simplest robust way: enable dotglob and loop, skipping specifics.
+
+          rsync -av --exclude='.git*' --exclude='releases' --exclude='build_tmp' --exclude='.github' . "${BUILD_DIR}/"
+
+          # 4. create releases folder
+          mkdir -p releases
+          ZIP="releases/${SLUG}.zip"
+
+          # 5. Zip the slug folder
+          cd build_tmp
+          zip -r -q "../${ZIP}" "${SLUG}"
+          cd ..
+
+          echo "Contents of zip:"
+          unzip -l "${ZIP}" | head -n 20
 
           echo "Built: ${ZIP}"
 
