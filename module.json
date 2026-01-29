@@ -1,0 +1,22 @@
+{
+    "schema": 1,
+    "name": "Test Modul",
+    "slug": "kiw-test-modul",
+    "version": "0.1.0",
+    "type": "module",
+    "entry": "kiw-test-modul.php",
+    "description": "Template for KIW private module distribution.",
+    "author": "KIW",
+    "license": "GPLv2 or later",
+    "text_domain": "kiw-test-modul",
+    "namespace": "KIW\\TestModul",
+    "requires": {
+        "php": ">=8.3",
+        "wp": ">=6.0"
+    },
+    "categories": [
+        "admin",
+        "productivity"
+    ],
+    "visibility": "public"
+}

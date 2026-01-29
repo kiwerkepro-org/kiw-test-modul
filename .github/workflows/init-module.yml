@@ -1,0 +1,88 @@
+name: Init Module (set slug + module.json)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize module scaffold
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SLUG="${GITHUB_REPOSITORY##*/}"
+          echo "Repo slug: ${SLUG}"
+
+          # 1) plugin/ -> <slug>/
+          if [ -d "plugin" ] && [ ! -d "${SLUG}" ]; then
+            mv "plugin" "${SLUG}"
+          fi
+
+          # 2) Ensure main plugin file is <slug>/<slug>.php
+          # Prefer existing <slug>.php, otherwise try to rename a single php file in the plugin root.
+          if [ ! -f "${SLUG}/${SLUG}.php" ]; then
+            # Try common patterns first
+            if [ -f "${SLUG}/plugin.php" ]; then
+              mv "${SLUG}/plugin.php" "${SLUG}/${SLUG}.php"
+            elif [ -f "${SLUG}/index.php" ]; then
+              mv "${SLUG}/index.php" "${SLUG}/${SLUG}.php"
+            else
+              # If exactly one *.php exists in <slug>/ root, rename it to <slug>.php
+              mapfile -t PHP_FILES < <(find "${SLUG}" -maxdepth 1 -type f -name "*.php" | sort || true)
+              if [ "${#PHP_FILES[@]}" -eq 1 ]; then
+                mv "${PHP_FILES[0]}" "${SLUG}/${SLUG}.php"
+              else
+                echo "ERROR: Cannot determine main plugin PHP file."
+                echo "Expected: ${SLUG}/${SLUG}.php"
+                echo "Found in ${SLUG}/ (root):"
+                ls -la "${SLUG}" || true
+                exit 1
+              fi
+            fi
+          fi
+
+          test -f "${SLUG}/${SLUG}.php"
+
+          # 3) WordPress header neutral/slug-based (best-effort)
+          # We only replace lines if they exist.
+          sed -i "s/^Plugin Name: .*$/Plugin Name: ${SLUG}/" "${SLUG}/${SLUG}.php" || true
+          sed -i "s/^Description: .*$/Description: KIW private module (${SLUG})./" "${SLUG}/${SLUG}.php" || true
+
+          # 4) Write kiw/module.json (used by kiw-suite auto-discovery)
+          # IMPORTANT: No hardcoded artifact filename here; suite discovery uses the latest release asset.
+          mkdir -p kiw
+          cat > kiw/module.json <<JSON
+          {
+            "schema_version": 1,
+            "slug": "${SLUG}",
+            "name": "${SLUG}",
+            "description": "KIW private module (${SLUG}).",
+            "plugin_file": "${SLUG}/${SLUG}.php",
+            "source": "private",
+            "autoupdate": false,
+            "requirements": {
+              "wp_min": "6.1",
+              "php_min": "8.0"
+            }
+          }
+JSON
+
+          # 5) Commit & push changes (only if changed)
+          git config user.name  "kiw-bot"
+          git config user.email "kiw-bot@users.noreply.github.com"
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore: init module scaffold (generic)"
+          git push origin HEAD:main
