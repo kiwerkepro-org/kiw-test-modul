@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Test Modul
  * Description: Template for KIW private module distribution.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Author: KIW
  * License: GPLv2 or later
  * Text Domain: kiw-test-modul
@@ -20,7 +20,7 @@ define('KIW_TEST_MODUL_URL', plugin_dir_url(__FILE__));
 
 final class Core {
     // PHP 8.3 Typed Constants
-    public const string VERSION = '0.1.0';
+    public const string VERSION = '0.1.1';
     public const string MIN_PHP_VERSION = '8.3';
     public const string MIN_WP_VERSION = '6.0';
     public const string SLUG = 'kiw-test-modul';

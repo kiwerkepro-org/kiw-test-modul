@@ -2,7 +2,7 @@
     "schema": 1,
     "name": "Test Modul",
     "slug": "kiw-test-modul",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "type": "module",
     "entry": "kiw-test-modul.php",
     "description": "Template for KIW private module distribution.",
