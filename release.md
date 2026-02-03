@@ -1,8 +1,8 @@
 # Release Metadata
 
-- **Version:** 1.0.2
+- **Version:** 1.0.3
 - **Date:** 2026-02-03
-- **Build Hash (SHA-256):** a81c475bba9590201c37748c6ca37ab6a03f838907fc5531a19b7f244d18ef04
+- **Build Hash (SHA-256):** 21bbb8162b55352706e19f44b737e6d601eee2bb75979ced949fc0e1923a1755
 - **Architecture:** v1.1.2
 - **CMS:** WordPress
 
@@ -12,4 +12,4 @@ The SHA-256 hash above is calculated over:
 - `src/**/*`
 
 ## Changelog
-- **[UPDATE]** Version bump to 1.0.2.
+- **[UPDATE]** Version bump to 1.0.3.

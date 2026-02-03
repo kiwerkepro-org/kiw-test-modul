@@ -3,7 +3,7 @@
     "id": "kiw-test-modul",
     "name": "KI-WERKE Test Modul",
     "slug": "kiw-test-modul",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "type": "plugin",
     "entry": "kiw-test-modul.php",
     "description": "Automatisch generiertes Modul f\u00fcr kiw-test-modul.",

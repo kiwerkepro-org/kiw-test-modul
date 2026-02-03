@@ -1,3 +1,9 @@
+---
+description: 
+---
+
+Überschreibe die Datei `.agent/workflows/release.md` mit folgendem neuen Standard für die vollautomatische Kette:
+
 # KI-WERKE Release Workflow (v1.1.2)
 Dieses Dokument erzwingt eine atomare Release-Kette. Schlägt ein Schritt fehl, wird das gesamte Release abgebrochen.
 
