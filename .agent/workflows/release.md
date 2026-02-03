@@ -1,36 +1,26 @@
----
-description: KI-WERKE Professional Release Workflow v1.1.0
----
+# KI-WERKE Release Workflow (v1.1.2)
+Dieses Dokument erzwingt eine atomare Release-Kette. Schlägt ein Schritt fehl, wird das gesamte Release abgebrochen.
 
----
-description: KI-WERKE Professional Release Workflow v1.1.0
----
+## 1. Pre-Flight Check (Linter)
+- Führe den `architecture-linter` aus.
+- Prüfe auf CDN-Links, fehlendes Escaping und harte Credentials.
+- Abbruch bei Fehlern.
 
-# /release
+## 2. Versionierung & Hashing
+- Erhöhe die Version in `module.json`.
+- Berechne SHA-256 Hash über `src/` und `module.json`.
+- Aktualisiere die lokale `release.md`.
 
-1. **Architecture-Audit (Linter):**
-   - Rufe den Skill `architecture-linter` auf.
-   - Prüfe auf CDN-Links, fehlendes Escaping und ungesicherte Inputs.
-   - Brich bei Verstößen sofort ab.
+## 3. GitHub Automatisierung (Vollautomatisch)
+- Führe `git add .` aus.
+- Commit: "Release v[VERSION] - Architecture v1.1.2".
+- Tag: Erstelle lokalen Tag `v[VERSION]`.
+- Push: Sende Branch und Tag zu `kiwerkepro-org` auf GitHub.
 
-2. **Integrity-Check (Self-Destruct):**
-   - Validiere die `checksums.json` gegen den aktuellen Datei-Stand.
-   - Stelle sicher, dass `src/Utils/SelfDestruct.php` aktiv eingebunden ist.
+## 4. Cloud-Registrierung (Vollautomatisch)
+- Lade `KIW_CENTRAL_USER` und `KIW_CENTRAL_PASS` aus `.env`.
+- Sende POST an `https://zentrale.kiwerke.com/api/v1/register`.
+- JSON Payload: `{ "module": "[SLUG]", "version": "[VERSION]", "hash": "[HASH]" }`.
 
-3. **Versioning (module.json):**
-   - Lese `system.cms` und `version` aus der `module.json`.
-   - Inkrementiere die Version (Patch-Level) im JSON und im Plugin-Header.
-
-4. **Document-Sync:**
-   - Extrahiere die neuesten Änderungen aus der `walkthrough.md`.
-   - Bereite die Release-Notes für GitHub vor.
-
-5. **Git & GitHub Execution:**
-   - `git add .`
-   - `git commit -m "Build v{{version}} [Security Hardened]"`
-   - `git tag -a v{{version}} -m "KI-WERKE Release v{{version}}"`
-   - `gh release create v{{version}} --title "v{{version}}" --notes-file walkthrough.md`
-
-6. **Zentrale-Hash:**
-   - Generiere den finalen SHA-256 Hash des Releases.
-   - Gib den Hash aus, damit dieser als "autorisierter Build" für die KI Werke Zentrale registriert werden kann.
+## 5. Abschlussbericht
+- Bestätige (a) GitHub-Status, (b) Tag-Status, (c) Zentrale-Status.
