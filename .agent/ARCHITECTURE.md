@@ -118,9 +118,8 @@ Modular knowledge domains that agents can load on-demand. based on task context.
 | `vulnerability-scanner` | Security auditing, OWASP |
 | `red-team-tactics` | Offensive security |
 
-### Architecture & Planning
 
-| Skill | Description |
+| architecture-linter | **KI-WERKE Gatekeeper:** Enforces Zero-CDN, Escaping, and Proxy-Only rules | Description |
 | ----- | ----------- |
 | `app-builder` | Full-stack app scaffolding |
 | `architecture` | System design patterns |
@@ -287,3 +286,4 @@ For details, see [scripts/README.md](scripts/README.md)
 | Testing | `test-engineer` | testing-patterns, webapp-testing |
 | Debug | `debugger` | systematic-debugging |
 | Plan | `project-planner` | brainstorming, plan-writing |
+
