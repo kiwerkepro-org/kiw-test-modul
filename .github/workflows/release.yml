@@ -72,7 +72,7 @@ jobs:
       - name: Trigger KIW Suite sync (repository_dispatch)
         shell: bash
         env:
-          DISPATCH_TOKEN: ${{ secrets.KIW_SUITE_DISPATCH_TOKEN }}
+          DISPATCH_TOKEN: ${{ secrets.KIW_GH_PAT }}
           OWNER: ${{ env.KIW_SUITE_OWNER }}
           REPO: ${{ env.KIW_SUITE_REPO }}
           EVENT_TYPE: ${{ env.DISPATCH_EVENT_TYPE }}
