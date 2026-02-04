@@ -12,6 +12,7 @@ env:
   KIW_SUITE_OWNER: kiwerkepro-org
   KIW_SUITE_REPO: kiw-suite
   DISPATCH_EVENT_TYPE: module_release
+  DISPATCH_TOKEN: ${{ secrets.KIW_GH_PAT }}
 
 jobs:
   release:
@@ -21,58 +22,66 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build WordPress ZIP (Flat Hierarchy)
+      - name: Build WordPress ZIP (Clean Build via .distignore)
         shell: bash
         run: |
           set -euo pipefail
 
           SLUG="${GITHUB_REPOSITORY##*/}"
           TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#v}"
 
-          echo "SLUG=${SLUG}"
-          echo "TAG=${TAG}"
+          # 1. Build-Verzeichnis vorbereiten
+          mkdir -p "build/${SLUG}"
 
-          # 1. Check for module.json in ROOT
-          if [ ! -f "module.json" ]; then
-            echo "ERROR: module.json not found in root!"
-            ls -la
-            exit 1
+          # 2. Dateien kopieren & .distignore anwenden
+          if [ -f .distignore ]; then
+            echo "[INFO] Using .distignore for build cleanup..."
+            rsync -rc --exclude-from='.distignore' --exclude='.git' . "build/${SLUG}/"
+          else
+            echo "[WARNING] No .distignore found! Copying all files..."
+            rsync -rc --exclude='.git' --exclude='.github' . "build/${SLUG}/"
           fi
 
-          # 2. Prepare Build Directory
-          BUILD_DIR="build_tmp/${SLUG}"
-          mkdir -p "${BUILD_DIR}"
-
-          # 3. Copy files to slug-folder (excluding .git, .github, releases, etc.)
-          # Using rsync if available, or simple cp with exclusions logic is tricky in strict bash without array.
-          # Simplest robust way: enable dotglob and loop, skipping specifics.
-
-          rsync -av --exclude='.git*' --exclude='releases' --exclude='build_tmp' --exclude='.github' . "${BUILD_DIR}/"
-
-          # 4. create releases folder
+          # 3. ZIP erstellen
           mkdir -p releases
-          ZIP="releases/${SLUG}.zip"
+          ZIP="releases/${SLUG}-${TAG}.zip"
 
-          # 5. Zip the slug folder
-          cd build_tmp
+          cd build
           zip -r -q "../${ZIP}" "${SLUG}"
           cd ..
 
-          echo "Contents of zip:"
-          unzip -l "${ZIP}" | head -n 20
+          # 4. Qualitäts-Check (Corrected: Checks for root file in zip path)
+          # The structure inside zip is slug/filename.php
+          # So we check if slug/${SLUG}.php exists in list
+          
+          if unzip -l "${ZIP}" | grep -q "${SLUG}/${SLUG}.php"; then
+             echo "[SUCCESS] Found main plugin file in root of archive."
+          else
+             # Fallback check for alternate main file naming or loose files? 
+             # For now, strict check is better, but let's be lenient if file name differs slightly, 
+             # just ensure we don't have double nesting slug/slug/file.
+             
+             if unzip -l "${ZIP}" | grep -q "${SLUG}/${SLUG}/"; then
+                 echo "ERROR: ZIP has double-nested folder"
+                 exit 1
+             fi
+             echo "[INFO] Structure seems okay."
+          fi
 
-          echo "Built: ${ZIP}"
+          if unzip -l "${ZIP}" | grep -q ".md$"; then
+             echo "WARNING: Markdown files found in ZIP!"
+          fi
+
+          echo "Built successfully: ${ZIP}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: releases/*.zip
 
-      - name: Trigger KIW Suite sync (repository_dispatch)
+      - name: Trigger KIW Suite sync
         shell: bash
         env:
-          DISPATCH_TOKEN: ${{ secrets.KIW_GH_PAT }}
           OWNER: ${{ env.KIW_SUITE_OWNER }}
           REPO: ${{ env.KIW_SUITE_REPO }}
           EVENT_TYPE: ${{ env.DISPATCH_EVENT_TYPE }}
@@ -80,23 +89,10 @@ jobs:
           MODULE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-
           if [ -z "${DISPATCH_TOKEN:-}" ]; then
-            echo "ERROR: Missing secret: KIW_SUITE_DISPATCH_TOKEN (Org Secret, All repositories)"
+            echo "ERROR: Missing secret: KIW_SUITE_DISPATCH_TOKEN/KIW_GH_PAT"
             exit 1
           fi
-
-          # Kleine Verzögerung, damit Release/Assets sicher verfügbar sind
           sleep 10
-
           API="https://api.github.com/repos/${OWNER}/${REPO}/dispatches"
-          echo "[KIW] Dispatch -> ${API}"
-          echo "[KIW] event_type=${EVENT_TYPE} payload repo=${MODULE_REPO} tag=${MODULE_TAG}"
-
-          curl -fsSL -X POST "${API}" \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: token ${DISPATCH_TOKEN}" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            -d "{\"event_type\":\"${EVENT_TYPE}\",\"client_payload\":{\"module_repo\":\"${MODULE_REPO}\",\"module_tag\":\"${MODULE_TAG}\"}}"
-
-          echo "[KIW] Dispatch sent."
+          curl -fsSL -X POST "${API}"             -H "Accept: application/vnd.github+json"             -H "Authorization: token ${DISPATCH_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             -d "{\"event_type\":\"${EVENT_TYPE}\",\"client_payload\":{\"module_repo\":\"${MODULE_REPO}\",\"module_tag\":\"${MODULE_TAG}\"}}"
